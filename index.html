@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title> Chess</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.4; transform: scale(0.75); }
+    }
+    @keyframes shimmer {
+      0%   { background-position: -200% 0; }
+      100% { background-position:  200% 0; }
+    }
+
+    body {
+      background: #080d18;
+      color: #e2e8f0;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 28px 16px;
+    }
+
+    .app {
+      display: flex;
+      gap: 24px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+
+    /* ── Board + coordinates ── */
+    .left-panel { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+
+    .board-outer { display: flex; align-items: flex-start; }
+
+    .rank-labels {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-around;
+      height: 480px;
+      padding-right: 5px;
+      font-size: 11px;
+      color: #334155;
+      font-variant-numeric: tabular-nums;
+      user-select: none;
+    }
+
+    .board-col { display: flex; flex-direction: column; }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(8, 60px);
+      grid-template-rows: repeat(8, 60px);
+      border: 2px solid #1e3a5f;
+      border-radius: 4px;
+      overflow: hidden;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.7), 0 0 0 1px rgba(96,165,250,0.06);
+    }
+
+    .file-labels {
+      display: flex;
+      justify-content: space-around;
+      width: 480px;
+      padding-top: 4px;
+      font-size: 11px;
+      color: #334155;
+      user-select: none;
+    }
+
+    .cell {
+      width: 60px; height: 60px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 40px; line-height: 1;
+      cursor: pointer; user-select: none;
+      transition: filter 0.08s;
+    }
+    .cell:hover { filter: brightness(1.12); }
+    .cell.light  { background: #f0d9b5; }
+    .cell.dark   { background: #b58863; }
+    .cell.selected { background: #7fc97f !important; }
+    .cell.legal { background-image: radial-gradient(circle, rgba(0,0,0,0.22) 28%, transparent 30%); }
+    .cell.legal.light { background-color: #f0d9b5; }
+    .cell.legal.dark  { background-color: #b58863; }
+
+    .cell.piece-white {
+      color: #fff;
+      text-shadow: 0 0 2px #000, 1px 1px 0 #000, -1px 1px 0 #000, 1px -1px 0 #000, -1px -1px 0 #000;
+    }
+    .cell.piece-black {
+      color: #1a1a1a;
+      text-shadow: 0 0 2px #fff, 1px 1px 0 rgba(255,255,255,0.6), -1px 1px 0 rgba(255,255,255,0.6),
+                   1px -1px 0 rgba(255,255,255,0.6), -1px -1px 0 rgba(255,255,255,0.6);
+    }
+
+    .status-bar {
+      font-size: 12px; color: #475569;
+      padding-left: 18px; letter-spacing: 0.03em;
+    }
+
+    /* ── Sidebar ── */
+    .right-panel { width: 312px; display: flex; flex-direction: column; gap: 10px; }
+
+    .panel-header { padding: 2px 0 4px; }
+    h1 { font-size: 20px; font-weight: 700; color: #60a5fa; letter-spacing: 0.04em; }
+    .subtitle { display: block; font-size: 10px; color: #334155; letter-spacing: 0.08em; margin-top: 2px; }
+
+    h2 {
+      font-size: 10px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.1em;
+      color: #334155; margin-bottom: 10px;
+    }
+
+    section {
+      background: #0d1525;
+      border: 1px solid #1a2744;
+      border-radius: 10px;
+      padding: 14px;
+    }
+
+    .row {
+      display: flex; flex-wrap: wrap; gap: 6px;
+      align-items: center; margin-bottom: 8px;
+    }
+    .row:last-child { margin-bottom: 0; }
+
+    /* ── Buttons ── */
+    button {
+      padding: 5px 11px;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      cursor: pointer; font-size: 12px; font-weight: 500;
+      transition: background 0.12s, box-shadow 0.12s, color 0.12s;
+    }
+    .btn-primary {
+      background: #1d4ed8; color: #fff; border-color: #2563eb;
+      padding: 6px 16px; font-size: 13px;
+    }
+    .btn-primary:hover  { background: #2563eb; box-shadow: 0 0 0 2px rgba(96,165,250,0.25); }
+    .btn-primary:active { background: #1e40af; }
+
+    .btn-secondary { background: #111827; color: #64748b; border-color: #1e293b; }
+    .btn-secondary:hover  { background: #1a2540; color: #94a3b8; }
+    .btn-secondary:active { background: #0f172a; }
+
+    .btn-danger { background: #111827; color: #ef4444; border-color: #2d1111; }
+    .btn-danger:hover { background: #1f0e0e; }
+
+    .btn-auto-on { background: #0f2d1a !important; color: #4ade80 !important; border-color: #166534 !important; }
+    .btn-wakelock { background: #111827; color: #475569; border-color: #1e293b; }
+    .btn-wakelock:hover { background: #1a2540; color: #64748b; }
+    .btn-wakelock.wakelock-on {
+      background: #18120a; color: #fbbf24; border-color: #92400e;
+      box-shadow: 0 0 10px rgba(251,191,36,0.15);
+    }
+
+    .model-actions { padding-top: 8px; border-top: 1px solid #111827; margin-top: 2px; }
+
+    /* ── Form controls ── */
+    label { font-size: 12px; color: #475569; display: flex; align-items: center; gap: 5px; }
+
+    select, input[type="number"] {
+      background: #080d18; color: #e2e8f0;
+      border: 1px solid #1e293b; border-radius: 5px;
+      padding: 3px 6px; font-size: 12px;
+    }
+    select:focus, input:focus { outline: none; border-color: #1d4ed8; }
+    input[type="range"] { accent-color: #3b82f6; width: 88px; }
+
+    /* ── Training progress ── */
+    #train-progress { margin-top: 8px; }
+
+    .progress-header {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 11px; color: #475569; margin-bottom: 5px;
+    }
+    .training-indicator { display: flex; align-items: center; gap: 5px; color: #22c55e; }
+    .training-dot {
+      width: 6px; height: 6px; border-radius: 50%; background: #22c55e;
+      animation: pulse-dot 1.4s ease-in-out infinite;
+    }
+    .progress-bar-wrap {
+      height: 4px; background: #111827; border-radius: 2px; overflow: hidden;
+    }
+    .progress-bar {
+      height: 100%; width: 0%;
+      background: linear-gradient(90deg, #1d4ed8, #60a5fa, #1d4ed8);
+      background-size: 200% 100%;
+      border-radius: 2px;
+      transition: width 0.35s ease;
+      animation: shimmer 1.6s linear infinite;
+    }
+
+    /* ── Stats ── */
+    .stats-grid {
+      display: grid; grid-template-columns: 1fr auto;
+      gap: 4px 12px; font-size: 12px; color: #334155; margin-bottom: 10px;
+    }
+    .stats-grid span:nth-child(even) {
+      color: #64748b; font-variant-numeric: tabular-nums; text-align: right;
+    }
+    .win  { color: #22c55e !important; }
+    .draw { color: #475569 !important; }
+    .loss { color: #ef4444 !important; }
+
+    #loss-canvas { border-radius: 4px; display: block; }
+
+    /* ── Divider ── */
+    .sep { height: 1px; background: #111827; margin: 6px 0; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- TensorFlow.js for GPU-accelerated training on the main thread -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
+
+  <script src="src/chess.js"></script>
+  <script src="src/nn.js"></script>
+  <script src="src/agent.js"></script>
+  <script src="src/trainer.js"></script>
+  <script src="src/ui.js"></script>
+  <script>
+    const ui = new ChessUI('root');
+  </script>
+</body>
+</html>
